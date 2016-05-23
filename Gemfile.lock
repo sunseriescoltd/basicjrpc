@@ -1,0 +1,24 @@
+PATH
+  remote: .
+  specs:
+    basicjrpc (0.1.0)
+      oj
+      redis
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    oj (2.15.0)
+    rake (10.5.0)
+    redis (3.3.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  basicjrpc!
+  bundler (~> 1.11)
+  rake (~> 10.0)
+
+BUNDLED WITH
+   1.11.2
