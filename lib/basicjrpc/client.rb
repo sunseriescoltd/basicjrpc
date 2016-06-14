@@ -2,10 +2,11 @@ module BasicJRPC
   
   # Responding Client
   class Client
-    def initialize(queue)
+    def initialize(queue, timeout = 5)
       @redis = Redis.new(host: "redis")
       @queue = queue
       @payload = nil
+      @timeout = timeout
     end
     
     def method_missing(m, *args, &block)
@@ -13,10 +14,10 @@ module BasicJRPC
     end
     
     def send_request payload
-      payload.response_requested true
+      payload.response_requested = true
       @redis.rpush(@queue, Oj.dump(payload))
       
-      Timeout::timeout(5) {
+      Timeout::timeout(timeout) {
         return Oj.load(@redis.blpop(payload.message_id)[1]) 
       }
     end
@@ -25,7 +26,7 @@ module BasicJRPC
   # Fire And Forget Client
   class FAFClient < Client
     def send_request payload
-      payload.response_requested false
+      payload.response_requested = false
       @redis.rpush(@queue, Oj.dump(payload))
     end
   end
