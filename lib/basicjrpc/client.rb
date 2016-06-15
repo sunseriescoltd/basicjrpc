@@ -17,7 +17,7 @@ module BasicJRPC
       payload.response_requested = true
       @redis.rpush(@queue, Oj.dump(payload))
       
-      Timeout::timeout(timeout) {
+      Timeout::timeout(@timeout) {
         return Oj.load(@redis.blpop(payload.message_id)[1]) 
       }
     end
