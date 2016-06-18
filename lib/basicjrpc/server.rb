@@ -12,10 +12,10 @@ module BasicJRPC
       while true
         payload = @redis.blpop(@queue)[1]
         payload = Oj.load(payload)
-        puts "Processing message #{payload.method_name} #{payload.args}" if BasicJRPC::Config.debug
+        puts "Processing message #{payload.method_name} #{payload.method_arguments}" if BasicJRPC::Config.debug
         
         # Should always return a data object
-        response = @injected_class.send(payload.method_name, *payload.args)
+        response = @injected_class.send(payload.method_name, *payload.method_arguments)
           
         # Bounce the response back if response is requested
         @redis.rpush(payload.message_id, Oj.dump(response)) if payload.response_requested
