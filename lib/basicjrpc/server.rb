@@ -18,7 +18,7 @@ module BasicJRPC
         response = @injected_class.send(payload.method_name, *payload.method_arguments)
           
         # Bounce the response back if response is requested
-        @redis.rpush(payload.message_id, Oj.dump(response)) if payload.response_requested
+        @redis.rpush(payload.message_id, Oj.dump(response)) if payload.response
       end
     end
     

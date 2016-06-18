@@ -10,7 +10,8 @@ module BasicJRPC
     end
     
     def method_missing(m, *args, &block)
-      send_request({ method_name: m, method_arguments: *args })
+      require 'pry'; binding.pry
+      send_request({ :method_name => m, :method_arguments => args })
     end
     
     def send_request payload
