@@ -1,12 +1,21 @@
+require 'timeout'
+
+
+##### WARNING
+##### WARNING
+##### THERE IS NO DEAD-CLIENT PROTECTION
+##### THIS WILL DAMAGE UPSTREAM REQUESTS UNTIL RELOADED
+
 module BasicJRPC
   
   # Responding Client
   class Client
     def initialize(queue, timeout = 5)
-      @redis = Redis.new(host: "redis")
       @queue = queue
       @payload = {}
       @timeout = timeout
+      @instance_id = SecureRandom.uuid
+      @nsq_producer = Nsq::Producer.new(nsqd: 'dockerlb:4150', topic: @queue)
     end
     
     def method_missing(m, *args, &block)
@@ -15,13 +24,21 @@ module BasicJRPC
     
     def send_request payload
       payload[:message_id] = SecureRandom.uuid
+      payload[:instance_id] = @instance_id
       payload[:response] = true
+            
+      my_message = false
       
-      @redis.rpush(@queue, Oj.dump(payload))
+      @nsq_producer.write(Oj.dump(payload))
       
-      Timeout::timeout(@timeout) {
-        return Oj.load(@redis.blpop(payload[:message_id])[1]) 
+      Timeout::timeout(5) {
+        Oj.load(Redis.new(host: "redis").blpop(payload[:message_id])[1])
       }
+    end
+    
+    # This must be called
+    def terminate
+      nsq_producer.terminate
     end
   end
 
@@ -30,7 +47,7 @@ module BasicJRPC
     def send_request payload
       payload[:message_id] = SecureRandom.uuid
       payload[:response] = true
-      @redis.rpush(@queue, Oj.dump(payload))
+      @nsq_producer.write(Oj.dump(payload))
     end
   end
   
