@@ -12,7 +12,7 @@ module BasicJRPC
       while true
         message = @nsq_consumer.pop
         payload = Oj.load(message.body)
-        puts "Processing message #{payload.method_name} #{payload.method_arguments}"
+        puts "Processing message #{payload.method_id} #{payload.method_name} #{payload.method_arguments} #{payload.callers}"
         
         # Should always return a data object
         response = @injected_class.send(payload.method_name, *payload.method_arguments)
@@ -20,6 +20,14 @@ module BasicJRPC
         Redis.new(host: "redis").rpush(payload.message_id, Oj.dump(response))
         message.finish
       end
+    rescue Exception => e
+      message.finish
+      terminate
+      raise e
+    end
+    
+    def terminate
+      @nsq_consumer.terminate
     end
     
   end

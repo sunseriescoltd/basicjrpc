@@ -19,7 +19,7 @@ module BasicJRPC
     end
     
     def method_missing(m, *args, &block)
-      send_request({ :method_name => m, :method_arguments => args })
+      send_request({ :method_name => m, :method_arguments => args, :callers => caller.first(10) })
     end
     
     def send_request payload
@@ -29,16 +29,20 @@ module BasicJRPC
             
       my_message = false
       
+      puts "Writing Message #{payload[:message_id]} #{payload[:method_name]}"
       @nsq_producer.write(Oj.dump(payload))
       
       Timeout::timeout(5) {
         Oj.load(Redis.new(host: "redis").blpop(payload[:message_id])[1])
       }
+    rescue Exception => e
+      terminate
+      raise e
     end
     
     # This must be called
     def terminate
-      nsq_producer.terminate
+      @nsq_producer.terminate
     end
   end
 
@@ -47,7 +51,11 @@ module BasicJRPC
     def send_request payload
       payload[:message_id] = SecureRandom.uuid
       payload[:response] = true
+      payload[:caller] = caller.first(10)
       @nsq_producer.write(Oj.dump(payload))
+    rescue Exception => e
+      terminate
+      raise e
     end
   end
   
