@@ -15,7 +15,8 @@ module BasicJRPC
       @payload = {}
       @timeout = timeout
       @instance_id = SecureRandom.uuid
-      @nsq_producer = Nsq::Producer.new(nsqd: 'dockerlb:4150', topic: @queue)
+      #@nsq_producer = Nsq::Producer.new(nsqd: 'dockerlb:4150', topic: @queue)
+      @redis = Redis.new(host: "redis")
     end
     
     def method_missing(m, *args, &block)
@@ -30,19 +31,21 @@ module BasicJRPC
       my_message = false
       
       puts "Writing Message #{payload[:message_id]} #{payload[:method_name]}"
-      @nsq_producer.write(Oj.dump(payload))
+      #@nsq_producer.write(Oj.dump(payload))
+      @redis.rpush(@queue, Oj.dump(payload))
       
       Timeout::timeout(5) {
-        Oj.load(Redis.new(host: "redis").blpop(payload[:message_id])[1])
+        ### OR USE POP AND LLEN
+        Oj.load(@redis.blpop(payload[:message_id])[1])
       }
     rescue Exception => e
-      terminate
+      #terminate
       raise e
     end
     
     # This must be called
     def terminate
-      @nsq_producer.terminate
+      #@nsq_producer.terminate
     end
   end
 
@@ -52,9 +55,10 @@ module BasicJRPC
       payload[:message_id] = SecureRandom.uuid
       payload[:response] = true
       payload[:caller] = caller.first(10)
-      @nsq_producer.write(Oj.dump(payload))
+      #@nsq_producer.write(Oj.dump(payload))
+      @redis.rpush(@queue, Oj.dump(payload))
     rescue Exception => e
-      terminate
+      #terminate
       raise e
     end
   end
