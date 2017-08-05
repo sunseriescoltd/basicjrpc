@@ -13,7 +13,13 @@ module BasicJRPC
       @redis = Redis.new(host: @host)
       
       while true
-        redis_response = @redis.brpop(@queue)
+        begin
+          redis_response = @redis.brpop(@queue)
+        rescue Redis::TimeoutError
+          puts "ERROR: Redis Read timed out. Retrying"
+          retry
+        end
+        
         next if redis_response.nil?
         message = redis_response[1]
         
