@@ -16,7 +16,7 @@ module BasicJRPC
       @timeout = timeout
       @instance_id = SecureRandom.uuid
       #@nsq_producer = Nsq::Producer.new(nsqd: 'dockerlb:4150', topic: @queue)
-      @redis = Redis.new(host: host)
+      @redis = Redis.new(host: host, port: 6381)
     end
     
     def method_missing(m, *args, &block)
