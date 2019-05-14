@@ -3,6 +3,7 @@ require 'redis'
 require 'oj'
 require 'securerandom'
 require 'basicjrpc'
+require 'json'
 
 gem_root = Gem::Specification.find_by_name("basicjrpc").gem_dir
 require_all "#{gem_root}/lib/basicjrpc/**/*.rb"

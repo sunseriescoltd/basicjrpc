@@ -27,7 +27,11 @@ module BasicJRPC
         payload = Oj.load(message, :symbol_keys => false)
 
         if payload['method_argument_type'] and payload.method_argument_type == "hash"
-          response = @injected_class.send(payload.method_name, *payload.method_arguments.first.values)
+          if @injected_class.method(payload.method_name).parameters.flatten.include?(:keyreq)
+            response = @injected_class.send(payload.method_name, *payload.method_arguments)
+          else
+            response = @injected_class.send(payload.method_name, *payload.method_arguments.first.values)
+          end
         else
           response = @injected_class.send(payload.method_name, *payload.method_arguments)
         end

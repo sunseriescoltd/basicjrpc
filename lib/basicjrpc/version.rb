@@ -1,3 +1,3 @@
 module BasicJRPC
-  VERSION = "0.1.72"
+  VERSION = "0.1.75"
 end
