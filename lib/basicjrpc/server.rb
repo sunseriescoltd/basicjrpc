@@ -2,20 +2,22 @@ module BasicJRPC
   class Server
         
     def initialize queue, injected_class, host="redis"
+      if host.is_a?(Array)
+        @redis = Redis.new(cluster: host.map { |n| "redis://#{n}:6381" }, driver: :hiredis)
+      elsif host.is_a?(String)
+        @redis = Redis.new(host: @host, port: 6381)
+      end
       @injected_class = injected_class
       @queue = queue
-      #@nsq_consumer = Nsq::Consumer.new(nsqlookupd: 'dockerlb:4161', topic: @queue, channel: 'server')
       @host = host
     end
     
     def listen(trigger=nil, error_handler=nil)
       puts "Listening..."
-      @redis = Redis.new(host: @host, port: 6381)
       
       while true
         begin
           redis_response = @redis.blpop(@queue)
-          #@redis.rpush("#{@queue}-processing", redis_response)
         rescue Redis::TimeoutError
           puts "ERROR: Redis Read timed out. Retrying"
           retry
@@ -43,10 +45,6 @@ module BasicJRPC
     rescue Exception => e
       @redis.rpush(payload.message_id, Oj.dump(error_handler.handle(e))) if error_handler
       raise e
-    end
-    
-    def terminate
-      #@nsq_consumer.terminate
     end
     
   end
