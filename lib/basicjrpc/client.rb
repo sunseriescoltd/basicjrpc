@@ -9,7 +9,7 @@ module BasicJRPC
       if host.is_a?(Array)
         @redis = Redis.new(cluster: host.map { |n| "redis://#{n}:6381" }, driver: :hiredis)
       elsif host.is_a?(String)
-        @redis = Redis.new(host: @host, port: 6381)
+        @redis = Redis.new(host: host, port: 6381)
       end
     end
     
@@ -23,11 +23,11 @@ module BasicJRPC
       payload['response'] = true
       my_message = false
       
-      @redis.rpush(@queue, Oj.dump(payload))
+      @redis.rpush(@queue, JSON.dump(payload))
       
       response = @redis.blpop(payload['message_id'], @timeout)
       raise "BasicJRPCResponseTimeout" if response.nil?
-      Oj.load(response[1], :symbol_keys => true)
+      JSON.parse(response[1], :symbol_keys => true)
     end
     
   end
@@ -38,7 +38,7 @@ module BasicJRPC
       payload['message_id'] = SecureRandom.hex(10)
       payload['response'] = true
       payload['caller'] = caller.first(10)
-      @redis.rpush(@queue, Oj.dump(payload))
+      @redis.rpush(@queue, JSON.dump(payload))
     end
   end
 end

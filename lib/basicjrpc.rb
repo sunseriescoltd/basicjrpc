@@ -1,6 +1,5 @@
 require 'require_all'
 require 'redis'
-require 'oj'
 require 'securerandom'
 require 'basicjrpc'
 require 'json'
