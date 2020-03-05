@@ -14,30 +14,23 @@ module BasicJRPC
     end
     
     def method_missing(m, *args, &block)
-      send_request({ 'method_name' => m.to_s, 'method_arguments' => args, 'callers' => caller.first(10) })
+      payload = BasicJRPC::Data::RequestPayload.to_server(method_name: m.to_s, method_arguments: args, callers: caller.first(10), instance_id: @instance_id, message_id: SecureRandom.hex(10), method_argument_type: args.is_a?(Hash) ? "hash" : "array")
+      send_request(payload)
     end
     
-    def send_request payload
-      payload['message_id'] = SecureRandom.hex(10)
-      payload['instance_id'] = @instance_id
-      payload['response'] = true
-      my_message = false
-      
-      @redis.rpush(@queue, JSON.dump(payload))
-      
-      response = @redis.blpop(payload['message_id'], @timeout)
+    def send_request data
+      payload.response = true
+      @redis.rpush(@queue, payload.to_json)
+    
+      response = @redis.blpop(payload.message_id, @timeout)
       raise "BasicJRPCResponseTimeout" if response.nil?
-      JSON.parse(response[1], :symbol_keys => true)
+      ResponsePayload.from_server(response).to_response
     end
-    
   end
 
   # Fire And Forget Client
   class FAFClient < Client
     def send_request payload
-      payload['message_id'] = SecureRandom.hex(10)
-      payload['response'] = true
-      payload['caller'] = caller.first(10)
       @redis.rpush(@queue, JSON.dump(payload))
     end
   end

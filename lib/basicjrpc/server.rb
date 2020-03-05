@@ -1,6 +1,6 @@
 module BasicJRPC
   class Server
-        
+            
     def initialize queue, injected_class, host="redis"
       if host.is_a?(Array)
         @redis = Redis.new(cluster: host.map { |n| "redis://#{n}:6381" }, driver: :hiredis)
@@ -26,31 +26,11 @@ module BasicJRPC
         next if redis_response.nil?
         message = redis_response[1]
         
-        payload = JSON.load(message, :symbol_keys => false)
-
-        if payload['method_argument_type'] and payload.method_argument_type == "hash"
-          if @injected_class.method(payload.method_name).parameters.flatten.include?(:keyreq)
-            data = {}
-            payload.method_arguments.first.each { |k,v| data[k.gsub(":", "")] = v }
-            data.symbolize_keys!
-            response = @injected_class.send(payload.method_name, data)
-          else
-            response = @injected_class.send(payload.method_name, *payload.method_arguments.first.values)
-          end
-        else
-          if payload.method_arguments.first.is_a?(Hash)
-            data = {}
-            payload.method_arguments.first.each { |k,v| data[k.gsub(":", "")] = v }
-            data.symbolize_keys!
-          else
-            data = *payload.method_arguments
-          end
-          response = @injected_class.send(payload.method_name, data)
-        end
-
-        @redis.rpush(payload.message_id, JSON.dump(response))
+        payload = BasicJRPC::Data::RequestPayload.from_client(message)
+        injected_class_response = @injected_class.send(payload.method_name, payload.args_data) if payload.method_argument_type == "hash"
+        response_payload = BasicJRPC::Data::ResponsePayload.to_client(payload.message_id, injected_class_response)
         
-        @injected_class.send(trigger) if trigger
+        @redis.rpush(response_payload.message_id, response_payload.to_json)
       end
     rescue Exception => e
       @redis.rpush(payload.message_id, JSON.dump(error_handler.handle(e))) if error_handler
